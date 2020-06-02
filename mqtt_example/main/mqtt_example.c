@@ -119,6 +119,7 @@ static void beacon_stuctures_filtering(int k, Beacon *beacon, int RSSI,	uint64_t
 	if (unique){
 		if ((RSSI>-65) && (strcmp(buffer, "476c6f62616c2d546167")==0 )){
 		//if ((strcmp(buffer, "11111111111111111111")==0)){
+		//if (1){
 			beacon[k].UUID = dev_addr;
 			beacon[k].RSSI = RSSI;
 			beacon[k].ID = buffer;
@@ -176,6 +177,8 @@ char *create_monitor(uint64_t mac_addr, bool detected)
     	}
     }
 
+
+
 end:
     cJSON_Delete(monitor);
     return string;
@@ -184,7 +187,7 @@ end:
 
 static void detect_arriving_beacons (){
 	bool maybe_just_arrived=false;
-	//printf("Detecting the arriving beacons--------------------- \n");
+	printf("Detecting the arriving beacons--------------------- \n");
 
 	for (int n=0; n<top; n++){ // for each beacon of arr10
 		for (int m=0; m<top_20; m++){// compare with ten seconds before
@@ -209,7 +212,7 @@ static void detect_arriving_beacons (){
 				}
 			}
 			maybe_just_arrived=false;
-			if (beacon_arr[n].arrived  && (beacon_arr[n].UUID != 10)){ create_monitor(beacon_arr[n].UUID, true);}
+			if (beacon_arr[n].arrived && (beacon_arr[n].UUID != 10)){ create_monitor(beacon_arr[n].UUID, true);}
 		}
 	}
 }
@@ -240,15 +243,15 @@ static void detect_left_beacons (){
 				}
 			}
 			maybe_left=false;
-			if (beacon_arr_30[n].left && (beacon_arr_30[n].UUID != 10)){ create_monitor(beacon_arr_30[n].UUID, false);}
+			if (beacon_arr_30[n].left && (beacon_arr_30[n].UUID != 10) ){ create_monitor(beacon_arr_30[n].UUID, false);}
 		}
 	}
 }
 
 void print_list(){
-	//buffercounter = buffercounter +1;
+	buffercounter = buffercounter +1;
 
-	//printf("'U': %d,  \n", buffercounter );
+	printf("'U': %d,  \n", buffercounter );
 
 	for (int k=0; k<top; k++){
 			printf("The LIST---------------------ARR_10 \n");
@@ -300,10 +303,6 @@ static void past_info(Beacon *beacon){
 int counter = 0;
 static void esp_gap_cb(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t* param)
 {
-
-    //vTaskSuspend(node_write_task_handle);
-    //vTaskSuspend(node_read_task_handle);
-
 	//printf("esp_gap_cb is called");
 	counter++;
 	esp_err_t err;
@@ -346,7 +345,7 @@ static void esp_gap_cb(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t* par
                     time2 = xx_time_get_time();
                     if ((time2-time1)>10000){
                     	j=0;
-                    	printf("'TIME DIFFERENCE':" "%" PRIu64 "\n", time2-time1);
+                    	printf("'TIME DIFFFRENCE':" "%" PRIu64 "\n", time2-time1);
                     	time1 = xx_time_get_time();
                     	if (time2<30000){
                     		past_info(beacon_arr);
@@ -360,13 +359,14 @@ static void esp_gap_cb(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t* par
             			}
                     }
 
+
                     if (ret) {
                     	time_point_nbf = xx_time_get_time();
-                    	if ((time_point_nbf-time_point_bf)>15000 && (time_point_nbf-time_point_bf)<25000){
+                    	if ((time_point_nbf-time_point_bf)>15000 && (time_point_nbf-time_point_bf)<17300){
+
                     		ESP_LOGI(DEMO_TAG, "--------NO BEACON Found----------");
-                    		beacon_stuctures_filtering(0, beacon_arr, 0, 10, "476c6f62616c2d546167",counter); // assign our namespace id
-                            //beacon_stuctures_filtering(0, beacon_arr, 0, 10, "11111111111111111111", counter); // assign our namespace id
-                            // modified &beacon_arr
+                    		beacon_stuctures_filtering(0, &beacon_arr, 0, 10, "476c6f62616c2d546167",counter); // assign our namespace id
+
                     	}
 
                         // error:The received data is not an eddystone frame packet or a correct eddystone frame packet.
@@ -378,6 +378,7 @@ static void esp_gap_cb(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t* par
 						// Here, we get the eddystone infomation in eddystone_res, we can use the data in res to do other things.
 						// For example, just print them:
 						ESP_LOGI(DEMO_TAG, "--------Eddystone Found----------");
+						
 					//	any_beacon = true;
 						//esp_log_buffer_hex("EDDYSTONE_DEMO: Device address:", scan_result->scan_rst.bda, ESP_BD_ADDR_LEN);
 						//ESP_LOGI(DEMO_TAG, "RSSI of packet:%d dbm", scan_result->scan_rst.rssi);
@@ -402,13 +403,12 @@ static void esp_gap_cb(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t* par
 										| ((uint64_t) (&eddystone_res)->inform.uid.namespace_id[8]	<< 8)
 										| ((uint64_t) (&eddystone_res)->inform.uid.namespace_id[9]);
 						sprintf(buffer, "%llx%llx", namespace_id_1, namespace_id_2);
-                        if (strcmp(buffer, "11111111111111111111")==0)
+						if (strcmp(buffer, "476c6f62616c2d546167")==0)
                         {
 						    time_point_bf = xx_time_get_time();
                         }
 						//esp_eddystone_show_inform(&eddystone_res);
-						beacon_stuctures_filtering(j, beacon_arr, RSSI, dev_addr, buffer,counter);
-                        //modified &beacon_arr &buffer
+						beacon_stuctures_filtering(j, &beacon_arr, RSSI, dev_addr, &buffer,counter);
 						j++;
 					}
                     break;
@@ -431,10 +431,8 @@ static void esp_gap_cb(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t* par
         default:
             break;
     }
-
-    //vTaskResume(node_write_task_handle);
-    //vTaskResume(node_read_task_handle);
 }
+
 
 
 void esp_eddystone_init(void)
@@ -618,7 +616,7 @@ static void node_write_task(RingbufHandle_t buf_handle)
             }
             printf("\n");
             //Return Item
-            vRingbufferReturnItem(buf_handle, (void *)item);
+            //vRingbufferReturnItem(buf_handle, (void *)item);
         esp_mesh_get_parent_bssid(&parent_mac);
         size = asprintf(&data, "%s", item);
 
